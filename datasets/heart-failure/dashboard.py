@@ -3,13 +3,13 @@ from dash import Dash, html, Input, Output, dcc
 import plotly.express as px
 import dash_bootstrap_components as dbc
 
-df = pd.read_csv("./datasets/pcos/pcos_dashboard.csv")
-numCols = df.select_dtypes("number").columns
-catCols = df.select_dtypes(exclude=["number"]).columns
+df = pd.read_csv("./datasets/heart-failure/heart_dashboard.csv")
+numCols = ['Age', 'RestingBP', 'Cholesterol', 'MaxHR', 'Oldpeak']
+catCols = ['Sex', 'ChestPainType', 'FastingBS', 'RestingECG', 'ExerciseAngina', 'ST_Slope', 'HeartDisease']
 
 # default figures
-PCOSPiePlot = px.pie(df, names="PCOS (Y/N)", title="PCOS")
-piePlot = px.pie(df, names="Blood Group", title="Blood group")
+PCOSPiePlot = px.pie(df, names="HeartDisease", title="Heart Disease")
+piePlot = px.pie(df, names="ChestPainType", title="Chest Pain Type")
 histogramPlot = px.histogram(df, x=numCols[0], title=numCols[0])
 scatterPlot = px.scatter(df, x=numCols[0], y=numCols[1], title=f"{numCols[0]} VS. {numCols[1]}")
 barPlot = px.bar(df.groupby(catCols[0], as_index=False)[numCols[0]].mean(), x=catCols[0], y=numCols[0], title=f"{catCols[0]} VS. Average {numCols[0]}")
@@ -18,7 +18,7 @@ app = Dash(__name__, external_stylesheets=[dbc.themes.VAPOR])
 
 app.layout = dbc.Container(
     [
-        html.H1("PCOS Dashboard"),
+        html.H1("Heart Failure Dashboard"),
         dbc.Row(
             [
                 dbc.Col(
@@ -28,29 +28,49 @@ app.layout = dbc.Container(
                             multi=True,
                             options=[
                                 {"label": x, "value": x}
-                                for x in df["Blood Group"].unique()
+                                for x in df["ChestPainType"].unique()
                             ],
-                            id="bloodGroup",
-                            value=df["Blood Group"].unique(),
-                            placeholder="Blood groups",
+                            id="ChestPainType",
+                            value=df["ChestPainType"].unique(),
+                            placeholder="Chest Pain Type",
+                        ),
+                        dcc.Dropdown(
+                            multi=True,
+                            options=[
+                                {"label": x, "value": x}
+                                for x in df["RestingECG"].unique()
+                            ],
+                            id="RestingECG",
+                            value=df["RestingECG"].unique(),
+                            placeholder="Resting ECG",
+                        ),
+                        dcc.Dropdown(
+                            multi=True,
+                            options=[
+                                {"label": x, "value": x}
+                                for x in df["ST_Slope"].unique()
+                            ],
+                            id="ST_Slope",
+                            value=df["ST_Slope"].unique(),
+                            placeholder="ST Slope",
                         ),
                         dbc.Row(
                             [
-                                dbc.Col([html.Label("PCOS")]),
+                                dbc.Col([html.Label("Heart Disease")]),
                                 dbc.Col(
                                     [
                                         dcc.Checklist(
-                                            id="pcos",
+                                            id="HeartDisease",
                                             options=[
-                                                {"label": "yes", "value": "yes"},
-                                                {"label": "no", "value": "no"},
+                                                {"label": "yes", "value": 1},
+                                                {"label": "no", "value": 0},
                                             ],
                                             inline=True,
                                             labelStyle={
                                                 "display": "inline-block",
                                                 "margin-right": "15px",
                                             },
-                                            value=['yes', 'no']
+                                            value=[1, 0]
                                         )
                                     ]
                                 ),
@@ -58,21 +78,21 @@ app.layout = dbc.Container(
                         ),
                         dbc.Row(
                             [
-                                dbc.Col([html.Label("Pregnant")]),
+                                dbc.Col([html.Label("Sex")]),
                                 dbc.Col(
                                     [
                                         dcc.Checklist(
-                                            id="pregnant",
+                                            id="Sex",
                                             options=[
-                                                {"label": "yes", "value": "yes"},
-                                                {"label": "no", "value": "no"},
+                                                {"label": "male", "value": "M"},
+                                                {"label": "female", "value": "F"},
                                             ],
                                             inline=True,
                                             labelStyle={
                                                 "display": "inline-block",
                                                 "margin-right": "15px",
                                             },
-                                            value=['yes', 'no']
+                                            value=['M', 'F']
                                         )
                                     ]
                                 ),
@@ -80,21 +100,21 @@ app.layout = dbc.Container(
                         ),
                         dbc.Row(
                             [
-                                dbc.Col([html.Label("Weight gain")]),
+                                dbc.Col([html.Label("Fasting BS")]),
                                 dbc.Col(
                                     [
                                         dcc.Checklist(
-                                            id="weightGain",
+                                            id="FastingBS",
                                             options=[
-                                                {"label": "yes", "value": "yes"},
-                                                {"label": "no", "value": "no"},
+                                                {"label": "yes", "value": 1},
+                                                {"label": "no", "value": 0},
                                             ],
                                             inline=True,
                                             labelStyle={
                                                 "display": "inline-block",
                                                 "margin-right": "15px",
                                             },
-                                            value=['yes', 'no']
+                                            value=[1, 0]
                                         )
                                     ]
                                 ),
@@ -102,136 +122,26 @@ app.layout = dbc.Container(
                         ),
                         dbc.Row(
                             [
-                                dbc.Col([html.Label("Hair growth")]),
+                                dbc.Col([html.Label("Exercise Angina")]),
                                 dbc.Col(
                                     [
                                         dcc.Checklist(
-                                            id="hairGrowth",
+                                            id="ExerciseAngina",
                                             options=[
-                                                {"label": "yes", "value": "yes"},
-                                                {"label": "no", "value": "no"},
+                                                {"label": "yes", "value": "Y"},
+                                                {"label": "no", "value": "N"},
                                             ],
                                             inline=True,
                                             labelStyle={
                                                 "display": "inline-block",
                                                 "margin-right": "15px",
                                             },
-                                            value=['yes', 'no']
+                                            value=['Y', 'N']
                                         )
                                     ]
                                 ),
                             ]
-                        ),
-                        dbc.Row(
-                            [
-                                dbc.Col([html.Label("Skin darkening")]),
-                                dbc.Col(
-                                    [
-                                        dcc.Checklist(
-                                            id="skinDarkening",
-                                            options=[
-                                                {"label": "yes", "value": "yes"},
-                                                {"label": "no", "value": "no"},
-                                            ],
-                                            inline=True,
-                                            labelStyle={
-                                                "display": "inline-block",
-                                                "margin-right": "15px",
-                                            },
-                                            value=['yes', 'no']
-                                        )
-                                    ]
-                                ),
-                            ]
-                        ),
-                        dbc.Row(
-                            [
-                                dbc.Col([html.Label("Hair loss")]),
-                                dbc.Col(
-                                    [
-                                        dcc.Checklist(
-                                            id="hairLoss",
-                                            options=[
-                                                {"label": "yes", "value": "yes"},
-                                                {"label": "no", "value": "no"},
-                                            ],
-                                            inline=True,
-                                            labelStyle={
-                                                "display": "inline-block",
-                                                "margin-right": "15px",
-                                            },
-                                            value=['yes', 'no']
-                                        )
-                                    ]
-                                ),
-                            ]
-                        ),
-                        dbc.Row(
-                            [
-                                dbc.Col([html.Label("Pimples")]),
-                                dbc.Col(
-                                    [
-                                        dcc.Checklist(
-                                            id="pimples",
-                                            options=[
-                                                {"label": "yes", "value": "yes"},
-                                                {"label": "no", "value": "no"},
-                                            ],
-                                            inline=True,
-                                            labelStyle={
-                                                "display": "inline-block",
-                                                "margin-right": "15px",
-                                            },
-                                            value=['yes', 'no']
-                                        )
-                                    ]
-                                ),
-                            ]
-                        ),
-                        dbc.Row(
-                            [
-                                dbc.Col([html.Label("Fast food")]),
-                                dbc.Col(
-                                    [
-                                        dcc.Checklist(
-                                            id="fastFood",
-                                            options=[
-                                                {"label": "yes", "value": "yes"},
-                                                {"label": "no", "value": "no"},
-                                            ],
-                                            inline=True,
-                                            labelStyle={
-                                                "display": "inline-block",
-                                                "margin-right": "15px",
-                                            },
-                                            value=['yes', 'no']
-                                        )
-                                    ]
-                                ),
-                            ]
-                        ),
-                        dbc.Row(
-                            [
-                                dbc.Col([html.Label("Regular exercise")]),
-                                dbc.Col(
-                                    [
-                                        dcc.Checklist(
-                                            id="regularExercise",
-                                            options=[
-                                                {"label": "yes", "value": "yes"},
-                                                {"label": "no", "value": "no"},
-                                            ],
-                                            inline=True,
-                                            labelStyle={
-                                                "display": "inline-block",
-                                                "margin-right": "15px",
-                                            },
-                                            value=['yes', 'no']
-                                        )
-                                    ]
-                                ),
-                            ]
-                        ),
+                        )
                     ],
                     width=4,
                 ),
@@ -248,11 +158,10 @@ app.layout = dbc.Container(
                                             options=[
                                                 {"label": x, "value": x}
                                                 for x in catCols
-                                                if x != 'PCOS (Y/N)'
                                             ],
                                             multi=False,
                                             placeholder="Select column",
-                                            value='Blood Group',
+                                            value='Age',
                                             clearable=False,
                                         )
                                     ]
@@ -435,16 +344,13 @@ app.layout = dbc.Container(
         Output('barPlotGraph', 'figure')
     ],
     [
-        Input('bloodGroup', 'value'),
-        Input('pcos', 'value'),
-        Input('pregnant', 'value'),
-        Input('weightGain', 'value'),
-        Input('hairGrowth', 'value'),
-        Input('skinDarkening', 'value'),
-        Input('hairLoss', 'value'),
-        Input('pimples', 'value'),
-        Input('fastFood', 'value'),
-        Input('regularExercise', 'value'),
+        Input('ChestPainType', 'value'),
+        Input('RestingECG', 'value'),
+        Input('ST_Slope', 'value'),
+        Input('HeartDisease', 'value'),
+        Input('Sex', 'value'),
+        Input('FastingBS', 'value'),
+        Input('ExerciseAngina', 'value'),
 
         Input('piePlot', 'value'),
 
@@ -461,16 +367,13 @@ app.layout = dbc.Container(
     ]
 )
 def filtersEffect(
-    bloodGroup,
-    pcos, 
-    pregnant, 
-    weightGain,
-    hairGrowth,
-    skinDarkening,
-    hairLoss,
-    pimples,
-    fastFood,
-    regularExercise,
+    ChestPainType,
+    RestingECG, 
+    ST_Slope, 
+    HeartDisease,
+    Sex,
+    FastingBS,
+    ExerciseAngina,
     
     piePlot,
 
@@ -487,20 +390,17 @@ def filtersEffect(
 ):
 
     dff = df[
-        df['PCOS (Y/N)'].isin(pcos) &
-        df['Blood Group'].isin(bloodGroup) &
-        df['Pregnant(Y/N)'].isin(pregnant) &
-        df['Weight gain(Y/N)'].isin(weightGain) &
-        df['hair growth(Y/N)'].isin(hairGrowth) &
-        df['Skin darkening (Y/N)'].isin(skinDarkening) &
-        df['Hair loss(Y/N)'].isin(hairLoss) &
-        df['Pimples(Y/N)'].isin(pimples) &
-        df['Fast food (Y/N)'].isin(fastFood)&
-        df['Reg.Exercise(Y/N)'].isin(regularExercise)
+        df['ChestPainType'].isin(ChestPainType) &
+        df['RestingECG'].isin(RestingECG) &
+        df['ST_Slope'].isin(ST_Slope) &
+        df['HeartDisease'].isin(HeartDisease) &
+        df['Sex'].isin(Sex) &
+        df['FastingBS'].isin(FastingBS) &
+        df['ExerciseAngina'].isin(ExerciseAngina)
     ]
 
     return [
-        px.pie(dff, names="PCOS (Y/N)", title="PCOS"),
+        px.pie(dff, names="HeartDisease", title="Heart Disease"),
         px.pie(dff, names=piePlot, title=piePlot),
         px.histogram(dff, x=histPlot, title=histPlot, color=histPlotHue),
         px.scatter(dff, x=scatterPlotX, y=scatterPlotY, title=f"{scatterPlotY} VS. {scatterPlotX}", color=scatterPlotHue),
