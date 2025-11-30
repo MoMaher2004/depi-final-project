@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Language Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            padding: 20px;
+            transition: background 0.5s ease;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: fadeIn 0.8s ease;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .main-buttons {
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-arabic {
+            background: linear-gradient(to right, #ff416c, #ff4b2b);
+            color: white;
+        }
+
+        .btn-english {
+            background: linear-gradient(to right, #2193b0, #6dd5ed);
+            color: white;
+        }
+
+        .btn-text {
+            background: linear-gradient(to right, #11998e, #38ef7d);
+            color: white;
+        }
+
+        .voice-controls {
+            padding: 20px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            animation: slideUp 0.5s ease;
+        }
+
+        .voice-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-start {
+            background: linear-gradient(to right, #00b09b, #96c93d);
+            color: white;
+        }
+
+        .btn-stop {
+            background: linear-gradient(to right, #ff416c, #ff4b2b);
+            color: white;
+        }
+
+        .chat-container {
+            display: none;
+            flex-direction: column;
+            height: 500px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .chat-header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 12px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+            animation: messageAppear 0.3s ease;
+        }
+
+        .message.user {
+            background: #007bff;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.agent {
+            background: #e9ecef;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 10px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .chat-input-container {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .chat-input-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .send-btn {
+            margin-left: 10px;
+            padding: 12px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .send-btn:hover {
+            background: #0056b3;
+        }
+
+        .send-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .file-upload-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-input {
+            flex: 1;
+        }
+
+        .image-preview {
+            max-width: 60px;
+            max-height: 60px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .remove-image {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 15px;
+            margin: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+            align-self: flex-start;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+        }
+
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes messageAppear {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+        }
+
+        .recording-indicator {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            color: #ff416c;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .recording-dot {
+            width: 12px;
+            height: 12px;
+            background: #ff416c;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-message {
+            padding: 10px;
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Multi-Language Chat</h1>
+            <p>Choose your preferred communication method</p>
+        </div>
+
+        <div class="main-buttons" id="mainButtons">
+            <button class="btn btn-arabic" id="arabic">
+                <span>Arabic Voice Chat</span>
+            </button>
+            <button class="btn btn-english" id="english">
+                <span>English Voice Chat</span>
+            </button>
+            <button class="btn btn-text" id="textChat">
+                <span>Text Chat</span>
+            </button>
+        </div>
+
+        <div class="voice-controls" id="voiceControls">
+            <button class="back-btn" id="backFromVoice">← Back</button>
+            <div id="o" class="status-message">Select a language and start speaking</div>
+            <button class="voice-btn btn-start pulse" id="start">Start Recording</button>
+            <button class="voice-btn btn-stop" id="stop">Stop Recording</button>
+            <div class="recording-indicator" id="recordingIndicator">
+                <div class="recording-dot"></div>
+                <span>Recording in progress...</span>
+            </div>
+        </div>
+
+        <div class="chat-container" id="textChatContainer">
+            <button class="back-btn" id="backFromText">← Back</button>
+            <div class="chat-header">Text Chat</div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message agent">Hello! How can I help you today?</div>
+            </div>
+            <div class="chat-input-container">
+                <div class="chat-input-row">
+                    <input type="text" id="messageInput" class="chat-input" placeholder="Type your message...">
+                    <button id="sendMessage" class="send-btn">Send</button>
+                </div>
+                <div class="file-upload-row">
+                    <input type="file" id="fileInput" class="file-input" accept="image/*">
+                    <img src="" id="imagePreview" class="image-preview">
+                    <button id="removeImage" class="remove-image">×</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const mainButtons = document.getElementById('mainButtons');
+        const voiceControls = document.getElementById('voiceControls');
+        const textChatContainer = document.getElementById('textChatContainer');
+        const arabicBtn = document.getElementById('arabic');
+        const englishBtn = document.getElementById('english');
+        const textChatBtn = document.getElementById('textChat');
+        const startBtn = document.getElementById('start');
+        const stopBtn = document.getElementById('stop');
+        const backFromVoice = document.getElementById('backFromVoice');
+        const backFromText = document.getElementById('backFromText');
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        const output = document.getElementById('o');
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendMessageBtn = document.getElementById('sendMessage');
+        const fileInput = document.getElementById('fileInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const removeImageBtn = document.getElementById('removeImage');
+
+        // Variables
+        let mediaRecorder;
+        let chunks = [];
+        let voiceContext = [];
+        let textContext = [];
+        let lang;
+        let currentImageBase64 = '';
+
+        // Event Listeners
+        arabicBtn.addEventListener('click', startArabicChat);
+        englishBtn.addEventListener('click', startEnglishChat);
+        textChatBtn.addEventListener('click', startTextChat);
+        startBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', stopRecording);
+        backFromVoice.addEventListener('click', goBackToMain);
+        backFromText.addEventListener('click', goBackToMain);
+        sendMessageBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        fileInput.addEventListener('change', handleImageUpload);
+        removeImageBtn.addEventListener('click', clearImage);
+
+        // Functions
+        function startArabicChat() {
+            lang = 'arabic';
+            voiceContext = [{agent: 'أهلاً بيك، أنا الشات بوت بتاع SHS. أقدر أساعدك إزاي'}];
+            showVoiceControls();
+            output.textContent = 'أهلاً بيك، أنا الشات بوت بتاع SHS. أقدر أساعدك إزاي';
+            
+            // Play welcome audio (placeholder)
+            const audio = new Audio("data:audio/mp3;base64,SUQzBAA");
+            audio.play().catch(e => console.log("Audio play failed:", e));
+        }
+
+        function startEnglishChat() {
+            lang = 'english';
+            voiceContext = [{agent: 'Hi, I\'m SHS chatbot. How can I help you?'}];
+            showVoiceControls();
+            output.textContent = 'Hi, I\'m SHS chatbot. How can I help you?';
+            
+            // Play welcome audio (placeholder)
+            const audio = new Audio("data:audio/mp3;base64,SUQzB");
+            audio.play().catch(e => console.log("Audio play failed:", e));
+        }
+
+        function startTextChat() {
+            mainButtons.style.display = 'none';
+            textChatContainer.style.display = 'flex';
+            textContext = [{agent: 'Hello! How can I help you today?'}];
+            chatMessages.innerHTML = '<div class="message agent">Hello! How can I help you today?</div>';
+            clearImage(); // Reset image when starting text chat
+        }
+
+        function showVoiceControls() {
+            mainButtons.style.display = 'none';
+            voiceControls.style.display = 'flex';
+            startBtn.classList.add('pulse');
+        }
+
+        function goBackToMain() {
+            voiceControls.style.display = 'none';
+            textChatContainer.style.display = 'none';
+            mainButtons.style.display = 'flex';
+            
+            // Stop any ongoing recording
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+            
+            // Reset state
+            chunks = [];
+            voiceContext = [];
+            recordingIndicator.style.display = 'none';
+            startBtn.classList.add('pulse');
+            stopBtn.disabled = false;
+            clearImage();
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = e => {
+                    chunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = processRecording;
+
+                mediaRecorder.start();
+                startBtn.classList.remove('pulse');
+                recordingIndicator.style.display = 'flex';
+                stopBtn.disabled = false;
+                output.textContent = 'Recording... Speak now!';
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                output.textContent = 'Error: Could not access microphone. Please check permissions.';
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                recordingIndicator.style.display = 'none';
+                stopBtn.disabled = true;
+                output.textContent = 'Processing...';
+            }
+        }
+
+        async function processRecording() {
+            const blob = new Blob(chunks, { type: "audio/webm" });
+            const form = new FormData();
+            form.append("audio", blob, "recording.webm");
+            form.append("context", JSON.stringify(voiceContext));
+            form.append("lang", lang);
+
+            try {
+                output.innerHTML = 'Processing... <span class="loading"></span>';
+                
+                const res = await fetch("http://127.0.0.1:3000/voice", {
+                    method: "POST",
+                    body: form
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Server responded with ${res.status}`);
+                }
+
+                const data = await res.json();
+
+                voiceContext.push({ user: data.userMessage });
+                voiceContext.push({ agent: data.agentMessage });
+
+                output.textContent = data.agentMessage;
+
+                // Play response audio
+                if (data.audio) {
+                    const audio = new Audio("data:audio/mp3;base64," + data.audio);
+                    audio.play().catch(e => console.log("Audio play failed:", e));
+                }
+
+                chunks = [];
+                startBtn.classList.add('pulse');
+            } catch (e) {
+                console.error('Error processing recording:', e);
+                output.innerHTML = '<span style="color:red;font-weight:bold;">Error: Could not process recording. Please try again.</span>';
+                startBtn.classList.add('pulse');
+            }
+        }
+
+        function convertImageToBase64(file, callback) {
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                const base64String = event.target.result;
+                callback(base64String);
+            };
+            
+            reader.onerror = function(error) {
+                console.error('Error converting image to base64:', error);
+                callback(null, error);
+            };
+            
+            reader.readAsDataURL(file);
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                fileInput.value = '';
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image size should be less than 5MB');
+                fileInput.value = '';
+                return;
+            }
+
+            convertImageToBase64(file, function(base64String, error) {
+                if (error) {
+                    alert('Error converting image: ' + error);
+                    return;
+                }
+
+                currentImageBase64 = base64String;
+                imagePreview.src = base64String;
+                imagePreview.style.display = 'block';
+                removeImageBtn.style.display = 'block';
+            });
+        }
+
+        function clearImage() {
+            currentImageBase64 = '';
+            fileInput.value = '';
+            imagePreview.style.display = 'none';
+            removeImageBtn.style.display = 'none';
+        }
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            
+            // Don't send if both message and image are empty
+            if (!message && !currentImageBase64) {
+                messageInput.focus();
+                return;
+            }
+
+            // Add user message to chat
+            addMessageToChat(message, currentImageBase64, 'user');
+            messageInput.value = '';
+            
+            // Disable input while processing
+            setInputState(false);
+
+            // Make API call to /text endpoint
+            sendToTextAPI(message, currentImageBase64);
+            
+            // Clear image after sending
+            clearImage();
+        }
+
+        function addMessageToChat(message, imageBase64, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', sender);
+            
+            let messageContent = '';
+            
+            if (message) {
+                messageContent += `<div>${message}</div>`;
+            }
+            
+            if (imageBase64) {
+                messageContent += `<img src="${imageBase64}" class="message-image" alt="Uploaded image">`;
+            }
+            
+            messageElement.innerHTML = messageContent;
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function setInputState(enabled) {
+            messageInput.disabled = !enabled;
+            sendMessageBtn.disabled = !enabled;
+            fileInput.disabled = !enabled;
+            
+            if (enabled) {
+                sendMessageBtn.textContent = 'Send';
+                messageInput.focus();
+            } else {
+                sendMessageBtn.innerHTML = '<span class="loading"></span>';
+            }
+        }
+
+        async function sendToTextAPI(userMessage, imageBase64) {
+            try {
+                // Add user message to context
+                const userContent = {};
+                if (userMessage) userContent.text = userMessage;
+                if (imageBase64) userContent.image = imageBase64;
+                
+                textContext.push({ user: userContent });
+                
+                const requestBody = {
+                    context: textContext
+                };
+                
+                // Only add message if it exists
+                if (userMessage) {
+                    requestBody.message = userMessage;
+                }
+                
+                // Only add image if it exists
+                if (imageBase64) {
+                    requestBody.image = imageBase64;
+                }
+
+                const response = await fetch("http://127.0.0.1:3000/text", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Add agent response to context and chat
+                if (data.agentMessage) {
+                    textContext.push({ agent: data.agentMessage });
+                    addMessageToChat(
+                        typeof data.agentMessage === 'string' ? data.agentMessage : data.agentMessage.text,
+                        data.agentMessage.image, 
+                        'agent'
+                    );
+                }
+                
+            } catch (error) {
+                console.error('Error sending message:', error);
+                addMessageToChat("Sorry, I'm having trouble connecting right now. Please try again.", null, 'agent');
+            } finally {
+                // Re-enable input
+                setInputState(true);
+            }
+        }
+    </script>
+</body>
+</html>
