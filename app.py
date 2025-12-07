@@ -111,12 +111,17 @@ def predict_heart_disease():
 @app.route("/diabetes", methods=["POST"])
 def diabetes():
     data = request.json
-
+    print(data)
+    for d in ['gender', 'age', 'hypertension', 'heart_disease', 'smoking_history', 'bmi', 'HbA1c_level', 'blood_glucose_level']:
+        try:
+            fsdghaw = data[d]
+        except KeyError:
+            return f"{d} is missing, please provide it" 
     df = pd.DataFrame([{
-        "gender": data['gender'],
+        "gender": convert_to_valid_gender(data['gender'], 'Male', 'Female'),
         "age": data['age'],
-        "hypertension": data['hypertension'],
-        "heart_disease": data['heart_disease'],
+        "hypertension": convert_to_valid_binary(data['hypertension'], 1, 0),
+        "heart_disease": convert_to_valid_binary(data['heart_disease'], 1, 0),
         "smoking_history": data['smoking_history'],
         "bmi": data['bmi'],
         "HbA1c_level": data['HbA1c_level'],

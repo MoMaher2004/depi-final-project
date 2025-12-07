@@ -565,7 +565,7 @@
                 voiceContext.push({ user: data.userMessage });
                 voiceContext.push({ agent: data.agentMessage });
 
-                output.textContent = data.agentMessage;
+                output.textContent = data.agentMessage.message;
 
                 if (data.audio) {
                     const audio = new Audio("data:audio/mp3;base64," + data.audio);
