@@ -5,7 +5,7 @@ const multer = require('multer');
 const cors = require('cors');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const FormData = require('form-data');
-const { GoogleGenAI } = require('@google/genai');
+const OpenAI = require('openai');
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
@@ -27,6 +27,16 @@ const CLINIC_CONFIG = {
       { name: "bmi", question: "What is your BMI?", type: "number", mandatory: false, suggest_lab: true },
       { name: "HbA1c_level", question: "What is your HbA1c level?", type: "number", mandatory: false, suggest_lab: true },
       { name: "blood_glucose_level", question: "What is your blood glucose level?", type: "number", mandatory: false, suggest_lab: true }
+    ],
+    params_to_pass: [
+      'gender',
+      'age',
+      'hypertension',
+      'heart_disease',
+      'smoking_history',
+      'bmi',
+      'HbA1c_level',
+      'blood_glucose_level',
     ]
   },
   pcos: {
@@ -37,6 +47,12 @@ const CLINIC_CONFIG = {
       { name: "blood_group", question: "What is your blood group?", type: "enum", options: ["AB+", "AB-", "A+", "A-", "B+", "B-", "O+", "O-"], mandatory: false, suggest_lab: true },
       { name: "bmi", question: "What is your BMI?", type: "number", mandatory: true },
       { name: "pulse_rate", question: "What is your pulse rate?", type: "number", mandatory: false, suggest_lab: true }
+    ],
+    params_to_pass: [
+      'age',
+      'blood_group',
+      'bmi',
+      'pulse_rate',
     ]
   },
   brain_tumor: {
@@ -44,7 +60,8 @@ const CLINIC_CONFIG = {
     description: "User suspects a brain tumor.",
     fields: [
       { name: "image", question: "Please provide the MRI image path.", type: "string", mandatory: true }
-    ]
+    ],
+    params_to_pass: []
   },
   heart_failure: {
     tool_name: "predictHeartFailure",
@@ -61,12 +78,28 @@ const CLINIC_CONFIG = {
       { name: "ExerciseAngina", question: "Do you have chest pain during exercise?", type: "enum", options: ["Yes", "No"], mandatory: true },
       { name: "Oldpeak", question: "What is your ST depression (Oldpeak)?", type: "number", mandatory: false, suggest_lab: true },
       { name: "ST_Slope", question: "What is the slope of the peak exercise ST segment?", type: "enum", options: ["Up", "Flat", "Down"], mandatory: false, suggest_lab: true }
+    ],
+    params_to_pass: [
+      'Age',
+      'Sex',
+      'ChestPainType',
+      'RestingBP',
+      'Cholesterol',
+      'FastingBS',
+      'MaxHR',
+      'RestingECG',
+      'ExerciseAngina',
+      'Oldpeak',
+      'ST_Slope'
     ]
   }
 };
 
 const upload = multer({ storage: multer.memoryStorage() });
-const ai = new GoogleGenAI({});
+const deepseek = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: 'https://api.deepseek.com'
+});
 
 const stt = async (req) => {
   const audioBuffer = req.file.buffer;
@@ -99,73 +132,109 @@ const stt = async (req) => {
     return transcript;
   }
 
-  const llm = async (req) => {
-    const isArabic = req.body.lang === 'arabic';
-  const langInstruction = isArabic
+ const llm = async (req) => {
+  const langInstruction = (req.body.lang === 'arabic')
     ? "OUTPUT RULE: The 'message' field MUST be in Egyptian Arabic (لهجة مصرية). The 'reasoning' and technical keys MUST remain in English."
     : "OUTPUT RULE: The 'message' field MUST be in English.";
-const ai_res = await ai.models.generateContent({
-      model: 'gemini-2.5-pro',
-      contents: `You are 'MedAssist', a strict medical triage bot.
-    
-    *** YOUR GOAL ***
-    Identify the medical condition the user is checking for, collect the specific parameters required in the CONFIG below, and trigger the tool once ALL data is collected.
 
-    *** THE CONFIGURATION (STRICT RULES) ***
-    ${JSON.stringify(CLINIC_CONFIG)}
-
-    *** OPERATING RULES ***
-    1. **Context Analysis**: Look at the conversation history. Determine if the user is in the middle of a checkup (e.g., Diabetes).
-    2. **Anti-Hallucination**: If the user is checking for Diabetes, NEVER ask questions from the PCOS list unless they explicitly change the subject.
-    3. **Missing Data Loop**: 
-       - Compare the collected data in the history against the 'fields' list for the current condition.
-       - Identify the *first* missing field.
-       - Ask the user for that specific field.
-    4. **Handling 'I don't know'**:
-       - If the field has 'suggest_lab': true, tell the user this info is needed from a lab test/doctor.
-       - If the field has 'mandatory': true, ask them to provide an estimate or the exact value again.
-    5. **Data Cleaning**:
-       - Convert "twenty two" -> 22.
-       - Convert "mail" -> "Male".
-       - Convert "Yes"/"No" -> 1/0 (ONLY if the 'map' property exists for that field).
-    6. **Tool Trigger**:
-       - ONLY when ALL fields for the specific condition are collected, output the "tool" JSON.
-
-    *** REQUIRED JSON OUTPUT FORMAT ***
-    Return ONLY a single raw JSON object.
-
-    Scenario A: You need to ask a question.
-    {
-      "message": "The text of your question here"
+  const fewShotExamples = `
+    *** FEW-SHOT EXAMPLES (Follow this logic) ***
+    Example 1 (Asking for missing info):
+    User: "I think I have diabetes."
+    Context: []
+    Response: {
+      "reasoning": "User initiated diabetes check. Missing 'gender' and 'age'. I will ask for gender first.",
+      "message": "Okay, let's check that. First, are you Male or Female?"
     }
 
-    Scenario B: All data is ready. Call the tool.
-    {
+    Example 2 (Handling 'I don't know' for lab data):
+    User: "I don't know my HBA1c level."
+    Context: [...diabetes data...]
+    Response: {
+      "reasoning": "Field 'HbA1c_level' has suggest_lab=true. User doesn't know. I should suggest checking a lab report.",
+      "message": "That's okay. This is usually found in your blood test report. If you don't have it handy, I can suggest a laboratory to visit, do you want me to suggest some laboratories ?"
+    }
+
+    Example 3 (Triggering Tool):
+    User: "I'm 25, male, no hypertension, no heart disease, never smoked."
+    Context: [...all mandatory diabetes fields present...]
+    Response: {
+      "reasoning": "All mandatory fields for diabetes are collected. I can now trigger the prediction.",
       "tool": {
         "name": "predictDiabetes",
-        "params": {
-          "age": 25,
-          "gender": "Male",
-          "hypertension": 0,
-          ... (all other required fields)
-        }
+        "params": { "age": 25, "gender": "Male", "hypertension": 0, "heart_disease": 0, "smoking_history": "never" }
       }
     }
 
-    Scenario C: User Input unclear.
-    {
-      "message": "I didn't understand that. Could you please repeat your [Parameter Name]?"
+    Example 4 (Triggering Image-Only-based Tool):
+    User: "I want you to check my MRI image of my brain."
+    Context: []
+    Response: {
+      "reasoning": "MRI image of brain is gained. I can now trigger the prediction.",
+      "tool": {
+        "name": "predictBrainTumor",
+        "params": {}
+      }
     }
+  `;
+
+  const systemPrompt = `
+    [ROLE]
+    You are 'MedAssist', a professional medical triage bot.
+    
+    [GOAL]
+    Collect specific medical parameters from the user to run a prediction tool. Do not give medical advice.
+    
+    [DATA CONFIGURATION]
+    ${JSON.stringify(CLINIC_CONFIG)}
+
+    [OPERATING RULES]
+    1. **Identify Condition**: Based on the user's input, decide which condition (diabetes, pcos, etc.) they are checking.
+    2. **Check Missing Fields**: Compare the conversation history with the 'fields' list in [DATA CONFIGURATION].
+    3. **One Step at a Time**: Ask for ONLY ONE missing field at a time.
+    4. **Data Cleaning**: 
+       - If user says "mail" or "man", map it to "Male".
+       - If user says "twenty", map it to 20.
+    5. **Chain of Thought**: Before answering, fill the "reasoning" field to explain what data you have and what you need next.
+
+    ${fewShotExamples}
 
     ${langInstruction}
-  `
+    
+    [OUTPUT FORMAT]
+    Return ONLY valid JSON. No markdown formatting.
+    Format: { "reasoning": "string", "message": "string" } OR { "reasoning": "string", "tool": { ... } }
+  `;
+
+  try {
+    const completion = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: `Current Conversation Context: ${JSON.stringify(req.body.context)}`
+        }
+      ],
+      temperature: 0.2,
+      response_format: { type: "json_object" }
     });
 
-    let aiText = (typeof ai_res === 'string') ? ai_res : (ai_res.text || ai_res.output || (ai_res.output && ai_res.output[0] && ai_res.output[0].content) || '');
-    if(aiText.slice(0, 7) === "```json" && aiText.slice(-3) == "```") aiText = aiText.slice(7, -3)
-    aiText = JSON.parse(aiText)
-    return aiText
+    let aiText = completion.choices[0].message.content;
+    
+    if (aiText.startsWith("```json")) {
+      aiText = aiText.replace(/```json|```/g, "");
+    }
+    
+    return JSON.parse(aiText.trim());
+  } catch (error) {
+    console.error("DeepSeek API error:", error);
+    throw new Error("Failed to get response from AI model");
   }
+};
 
 const tts = async (res, aiText) => {
   const ttsPayload = {
@@ -240,12 +309,12 @@ app.post('/voice', upload.single('audio'), async (req, res) => {
     const transcript = await stt(req)
     req.body.context.push({user: transcript})
 
-    let aiText = await gemini(req)
+    let aiText = await llm(req)
     if (aiText.tool != undefined){
       if (aiText.tool['name'] == 'predictDiabetes'){
         const toolRes = await predictDiabetes(aiText.tool.params)
         req.body.context.push({tool: toolRes})
-        aiText = await gemini(req)
+        aiText = await llm(req)
       }
     }
     const ttsResponse = await tts(res, aiText)
@@ -269,10 +338,11 @@ app.post('/text', async (req, res) => {
   try {
     let aiText = await llm(req)
     // let aiText = {"tool": {"name": "predictDiabetes", "params": {"age": 2, "gender": "Male", "hypertension": 0, "heart_disease": 0, "smoking_history": "never", "bmi": 22, "HbA1c_level": 150, "blood_glucose_level": 5}}}
-    // let aiText = {"tool": {"name": "predictBrainTumor", "params": {"age": 22, "gender": "male", "hypertension": "yes", "heart_disease": "no", "smoking_history": "never", "bmi": 25, "HbA1c_level": 150, "blood_glucose_level": 5}}}
+    // let aiText = {"tool": {"name": "predictBrainTumor"}}
     // let aiText = {"tool": {"name": "predictPCOS", "params": {"age": 22, "blood_group": "A-", "bmi": 23, "pulse_rate": 70}}}
     // let aiText = {"tool": {"name": "predictHeartFailure", "params": {"Age": 22, "Sex": "M", "ChestPainType": 'ATA', "RestingBP": 150, "Cholesterol": 290, "FastingBS": 0, "RestingECG": 'Normal', "MaxHR": 170, "ExerciseAngina": 'N', "Oldpeak": 1, "ST_Slope": 'UP'}}}
-    if (aiText.tool != undefined){
+    while (aiText.tool != undefined){
+      console.log('loop entered')
       if (aiText.tool.name == 'predictDiabetes'){
         const toolRes = await predictDiabetes(aiText.tool.params)
         console.log(toolRes)
@@ -284,6 +354,7 @@ app.post('/text', async (req, res) => {
         aiText = await llm(req)
       } else if (aiText.tool.name == 'predictBrainTumor'){
         const toolRes = await predictBrainTumor(req.body.image)
+        console.log(toolRes)
         req.body.context.push({tool: toolRes})
         aiText = await llm(req)
       } else if (aiText.tool.name == 'predictHeartFailure'){
