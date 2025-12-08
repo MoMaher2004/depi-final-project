@@ -688,7 +688,7 @@
                 const userContent = {};
                 if (userMessage) userContent.text = userMessage;
                 
-                textContext.push({ user: userContent });
+                textContext.push({ user: (imageBase64?'<<THERE IS AN ATTACHED IMAGE>>':'') + userContent });
                 
                 const requestBody = {
                     context: textContext
