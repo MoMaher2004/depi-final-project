@@ -92,6 +92,40 @@ const CLINIC_CONFIG = {
       'Oldpeak',
       'ST_Slope'
     ]
+  },
+  chronic_kideny: {
+    tool_name: "predictChronicKidney",
+    description: "User suspects heart failure.",
+    fields: [
+      { name: "Bp", question: "What is your Blood Pressure?", type: "number", mandatory: true },
+      { name: "Sg", question: "What is your Specific Gravity?", type: "number", mandatory: true },
+      { name: "Al", question: "What is your Albumin?", type: "number", mandatory: true },
+      { name: "Su", question: "What is your Sugar?", type: "number", mandatory: true },
+      { name: "Rbc", question: "What is your Red Blood Cell?", type: "number", mandatory: true },
+      { name: "Bu", question: "What is your Blood Urea?", type: "number", mandatory: true },
+      { name: "Sc", question: "What is your Serum Creatinine?", type: "number", mandatory: true },
+      { name: "Sod", question: "What is your Sodium?", type: "number", mandatory: true },
+      { name: "Pot", question: "What is your Pottasium?", type: "number", mandatory: true },
+      { name: "Hemo", question: "What is your Blood Pressure?", type: "number", mandatory: true },
+      { name: "Wbcc", question: "What is your White Blood Cell Count?", type: "number", mandatory: true },
+      { name: "Rbcc", question: "What is your Red Blood Cell Count?", type: "number", mandatory: true },
+      { name: "Htn", question: "What is your Hypertension?", type: "enum", options: ["yes", "no"], mandatory: true },
+    ],
+    params_to_pass: [
+      'Bp',
+      'Sg',
+      'Al',
+      'Su',
+      'Rbc',
+      'Bu',
+      'Sc',
+      'Sod',
+      'Pot',
+      'Hemo',
+      'Wbcc',
+      'Rbcc',
+      'Htn'
+    ]
   }
 };
 
@@ -196,6 +230,7 @@ const stt = async (req) => {
        - If user says "mail" or "man", map it to "Male".
        - If user says "twenty", map it to 20.
     5. **Chain of Thought**: Before answering, fill the "reasoning" field to explain what data you have and what you need next.
+    6. **Tool Results**: By calling a tool successfully, it may say that there is a missing field or provide the result report, reformate this report and send it to the user.
 
     ${fewShotExamples}
 
@@ -280,6 +315,16 @@ const predictDiabetes = async (data) => {
     return res.text()
 }
 
+const predictChronicKidney = async (data) => {
+  const res = await fetch('http://127.0.0.1:8000/kidney', {
+      method: 'POST',
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    return res.text()
+}
+
 const predictBrainTumor = async (image) => {
   const res = await fetch('http://127.0.0.1:8000/brainTumor', {
       method: 'POST',
@@ -310,9 +355,36 @@ app.post('/voice', upload.single('audio'), async (req, res) => {
     req.body.context.push({user: transcript})
 
     let aiText = await llm(req)
-    if (aiText.tool != undefined){
-      if (aiText.tool['name'] == 'predictDiabetes'){
+    // let aiText = {"tool": {"name": "predictDiabetes", "params": {"age": 2, "gender": "Male", "hypertension": 0, "heart_disease": 0, "smoking_history": "never", "bmi": 22, "HbA1c_level": 150, "blood_glucose_level": 5}}}
+    // let aiText = {"tool": {"name": "predictBrainTumor"}}
+    // let aiText = {"tool": {"name": "predictPCOS", "params": {"age": 22, "blood_group": "A-", "bmi": 23, "pulse_rate": 70}}}
+    // let aiText = {"tool": {"name": "predictHeartFailure", "params": {"Age": 22, "Sex": "M", "ChestPainType": 'ATA', "RestingBP": 150, "Cholesterol": 290, "FastingBS": 0, "RestingECG": 'Normal', "MaxHR": 170, "ExerciseAngina": 'N', "Oldpeak": 1, "ST_Slope": 'UP'}}}
+    for (let i=0;i<5;i++){
+      if(aiText.tool == undefined) break 
+      console.log(`loop entered ${i}`)
+      if (aiText.tool.name == 'predictDiabetes'){
         const toolRes = await predictDiabetes(aiText.tool.params)
+        console.log(toolRes)
+        req.body.context.push({tool: toolRes})
+        aiText = await llm(req)
+      } else if (aiText.tool.name == 'predictPCOS'){
+        const toolRes = await predictPCOS(aiText.tool.params)
+        console.log(toolRes)
+        req.body.context.push({tool: toolRes})
+        aiText = await llm(req)
+      } else if (aiText.tool.name == 'predictBrainTumor'){
+        const toolRes = await predictBrainTumor(req.body.image)
+        console.log(toolRes)
+        req.body.context.push({tool: toolRes})
+        aiText = await llm(req)
+      } else if (aiText.tool.name == 'predictHeartFailure'){
+        const toolRes = await predictHeartFailure(aiText.tool.params)
+        console.log(toolRes)
+        req.body.context.push({tool: toolRes})
+        aiText = await llm(req)
+      } else if (aiText.tool.name == 'predictChronicKidney'){
+        const toolRes = await predictChronicKidney(aiText.tool.params)
+        console.log(toolRes)
         req.body.context.push({tool: toolRes})
         aiText = await llm(req)
       }
@@ -321,7 +393,7 @@ app.post('/voice', upload.single('audio'), async (req, res) => {
 
     const audioBuf = Buffer.from(await ttsResponse.arrayBuffer());
     const audioBase64 = audioBuf.toString("base64");
-    res.json({
+    return res.json({
       agentMessage: aiText,
       userMessage: transcript,
       audio: audioBase64,
@@ -330,7 +402,7 @@ app.post('/voice', upload.single('audio'), async (req, res) => {
 
   } catch (e) {
     console.error(e);
-    res.status(500).send('error');
+    return res.status(500).send('error');
   }
 });
 
@@ -341,8 +413,9 @@ app.post('/text', async (req, res) => {
     // let aiText = {"tool": {"name": "predictBrainTumor"}}
     // let aiText = {"tool": {"name": "predictPCOS", "params": {"age": 22, "blood_group": "A-", "bmi": 23, "pulse_rate": 70}}}
     // let aiText = {"tool": {"name": "predictHeartFailure", "params": {"Age": 22, "Sex": "M", "ChestPainType": 'ATA', "RestingBP": 150, "Cholesterol": 290, "FastingBS": 0, "RestingECG": 'Normal', "MaxHR": 170, "ExerciseAngina": 'N', "Oldpeak": 1, "ST_Slope": 'UP'}}}
-    while (aiText.tool != undefined){
-      console.log('loop entered')
+    for (let i=0;i<5;i++){
+      if(aiText.tool == undefined) break 
+      console.log(`loop entered ${i}`)
       if (aiText.tool.name == 'predictDiabetes'){
         const toolRes = await predictDiabetes(aiText.tool.params)
         console.log(toolRes)
@@ -350,6 +423,7 @@ app.post('/text', async (req, res) => {
         aiText = await llm(req)
       } else if (aiText.tool.name == 'predictPCOS'){
         const toolRes = await predictPCOS(aiText.tool.params)
+        console.log(toolRes)
         req.body.context.push({tool: toolRes})
         aiText = await llm(req)
       } else if (aiText.tool.name == 'predictBrainTumor'){
@@ -359,6 +433,12 @@ app.post('/text', async (req, res) => {
         aiText = await llm(req)
       } else if (aiText.tool.name == 'predictHeartFailure'){
         const toolRes = await predictHeartFailure(aiText.tool.params)
+        console.log(toolRes)
+        req.body.context.push({tool: toolRes})
+        aiText = await llm(req)
+      } else if (aiText.tool.name == 'predictChronicKidney'){
+        const toolRes = await predictChronicKidney(aiText.tool.params)
+        console.log(toolRes)
         req.body.context.push({tool: toolRes})
         aiText = await llm(req)
       }

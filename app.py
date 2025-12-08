@@ -25,21 +25,19 @@ def convert_to_valid_gender(x, male, female):
     if x in ['female', 'f']: return female
     return None
 
-# Create Flask app FIRST
 app = Flask(__name__)
 
-# Load models
 brainTumorModel = load_model(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "brainTumor.h5"))
 pcosModel = joblib.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "pcos.pkl"))
 diabetesModel = joblib.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "diabetes.pkl"))
 heartFailureScalerModel = joblib.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "scaler_heart.pkl"))
 heartFailureModel = joblib.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "heart_clinic_model_optimized.pkl"))
+kidneyModel = joblib.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", 'kidney_model.pkl'))
+kidneyScaler = joblib.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", 'kidney_scaler.pkl'))
 
-# Now create Dash app - IMPORTANT: Do it like this
 import dash
 from dash import Dash, html, dcc
 
-# Create separate Dash app instances for each dashboard
 pcos_dash_app = Dash(
     __name__,
     server=app,
@@ -64,18 +62,32 @@ heart_dash_app = Dash(
     suppress_callback_exceptions=True
 )
 
-# Import dashboard modules
-from dashboards import pcos, diabetes, heart
+kidney_dash_app = Dash(
+    __name__,
+    server=app,
+    url_base_pathname='/dashboards/kidney/',
+    external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'],
+    suppress_callback_exceptions=True
+)
 
-# Set each dashboard layout directly
+from dashboards import pcos, diabetes, heart, kidney
+
 pcos_dash_app.layout = pcos.layout
 diabetes_dash_app.layout = diabetes.layout
 heart_dash_app.layout = heart.layout
+kidney_dash_app.layout = kidney.layout
 
-# Flask routes (your API endpoints)
 @app.route("/heartFailure", methods=["POST"])
 def predict_heart_disease():
     data = request.json
+
+    cols_order = ['Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol', 'FastingBS', 'RestingECG', 'MaxHR', 'ExerciseAngina', 'Oldpeak', 'ST_Slope', 'MaxHR_Age', 'Oldpeak_Slope']
+
+    for d in ['Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol', 'FastingBS', 'RestingECG', 'MaxHR', 'ExerciseAngina', 'Oldpeak', 'ST_Slope']:
+        try:
+            fsdghaw = data[d]
+        except KeyError:
+            return f"{d} is missing, please provide it" 
 
     sex_map = {'Male': 1, 'Female': 0} 
     cp_map = {'ASY': 0, 'ATA': 1, 'NAP': 2, 'TA': 3} 
@@ -95,10 +107,6 @@ def predict_heart_disease():
     slope_val_num = input_data['ST_Slope'].values[0]
     slope_factor = 1 if slope_val_num == 1 else (2 if slope_val_num == 2 else 0)
     input_data['Oldpeak_Slope'] = input_data['Oldpeak'] * slope_factor
-
-    cols_order = ['Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol', 'FastingBS', 
-                  'RestingECG', 'MaxHR', 'ExerciseAngina', 'Oldpeak', 'ST_Slope', 
-                  'MaxHR_Age', 'Oldpeak_Slope']
     
     input_data = input_data[cols_order]
 
@@ -106,12 +114,38 @@ def predict_heart_disease():
     
     prediction = heartFailureModel.predict(input_data_scaled)[0]
     probability = heartFailureModel.predict_proba(input_data_scaled)[0][1] 
-    return f"Heart failure prediction is {prediction} with probability of {probability}"
+    return f"Heart failure prediction is {prediction} with probability of {probability * 100}%"
+
+@app.route("/kidney", methods=["POST"])
+def kidney():
+    data = request.json
+    for d in ['Bp', 'Sg', 'Al', 'Su', 'Rbc', 'Bu', 'Sc', 'Sod', 'Pot', 'Hemo', 'Wbcc', 'Rbcc', 'Htn']:
+        try:
+            fsdghaw = data[d]
+        except KeyError:
+            return f"{d} is missing, please provide it" 
+    df = pd.DataFrame([{
+        "Bp": data['Bp'],
+        "Sg": data['Sg'],
+        "Al": data['Al'],
+        "Su": data['Su'],
+        "Rbc": data['Rbc'],
+        "Bu": data['Bu'],
+        "Sc": data['Sc'],
+        "Sod": data['Sod'],
+        "Pot": data['Pot'],
+        "Hemo": data['Hemo'],
+        "Wbcc": data['Wbcc'],
+        "Rbcc": data['Rbcc'],
+        "Htn": convert_to_valid_binary(data['Htn'], 1, 0)
+    }])
+    data_scaled = kidneyScaler.transform(df)
+    res = kidneyModel.predict(data_scaled)
+    return f"chronic kidney disease prediction is {res[0]}"
 
 @app.route("/diabetes", methods=["POST"])
 def diabetes():
     data = request.json
-    print(data)
     for d in ['gender', 'age', 'hypertension', 'heart_disease', 'smoking_history', 'bmi', 'HbA1c_level', 'blood_glucose_level']:
         try:
             fsdghaw = data[d]
@@ -128,11 +162,16 @@ def diabetes():
         "blood_glucose_level": data['blood_glucose_level']
     }])
     res = diabetesModel.predict(df)
-    return f"diabetes prediction is {res[0]}"
+    return f"diabetes prediction is {'positive' if res[0] else 'negative'}"
 
 @app.route("/pcos", methods=["POST"])
 def pcos():
     data = request.json
+    for d in ['bmi', 'age', 'pulse_rate', 'blood_group']:
+        try:
+            fsdghaw = data[d]
+        except KeyError:
+            return f"{d} is missing, please provide it" 
 
     df = pd.DataFrame([{
         "Age (yrs)": 33,
@@ -194,7 +233,7 @@ def pcos():
     df.loc[0, 'Blood Group_O+'] = data['blood_group'] == 'O+'
     df.loc[0, 'Blood Group_O-'] = data['blood_group'] == 'O-'
     res = pcosModel.predict(df)
-    return f"PCOS prediction is {res[0]}"
+    return f"PCOS prediction is {'positive' if res[0] else 'negative'}"
 
 @app.route("/brainTumor", methods=["POST"])
 def brainTumor():
@@ -253,7 +292,6 @@ def brainTumor():
     Predicted Class: {predicted_class}
     Confidence: {confidence:.2f}%"""
 
-# Route handlers for each dashboard
 @app.route('/dashboards/pcos/<path:path>')
 def pcos_dash_route(path):
     return pcos_dash_app.index()
@@ -266,7 +304,10 @@ def diabetes_dash_route(path):
 def heart_dash_route(path):
     return heart_dash_app.index()
 
-# Redirect routes for each dashboard
+@app.route('/dashboards/kidney/<path:path>')
+def kidney_dash_route(path):
+    return kidney_dash_app.index()
+
 @app.route('/dashboards/pcos')
 def redirect_pcos():
     return redirect('/dashboards/pcos/')
@@ -279,25 +320,9 @@ def redirect_diabetes():
 def redirect_heart():
     return redirect('/dashboards/heart/')
 
-@app.route('/dashboards')
-@app.route('/dashboards/')
-def dashboards_home():
-    return '''
-    <h1>Health Analytics Dashboards</h1>
-    <div style="text-align: center; margin-top: 50px;">
-        <a href="/dashboards/pcos/" style="display: inline-block; margin: 20px; padding: 20px 40px; 
-           background-color: #007bff; color: white; text-decoration: none; border-radius: 10px; 
-           font-size: 18px; font-weight: bold;">PCOS Dashboard</a>
-        <br>
-        <a href="/dashboards/diabetes/" style="display: inline-block; margin: 20px; padding: 20px 40px; 
-           background-color: #28a745; color: white; text-decoration: none; border-radius: 10px; 
-           font-size: 18px; font-weight: bold;">Diabetes Dashboard</a>
-        <br>
-        <a href="/dashboards/heart/" style="display: inline-block; margin: 20px; padding: 20px 40px; 
-           background-color: #dc3545; color: white; text-decoration: none; border-radius: 10px; 
-           font-size: 18px; font-weight: bold;">Heart Dashboard</a>
-    </div>
-    '''
+@app.route('/dashboards/kidney')
+def redirect_kidney():
+    return redirect('/dashboards/kidney/')
 
 @app.route('/')
 def index():
@@ -308,4 +333,4 @@ def index():
         return '''<h1>ERROR</h1>'''
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=5000)
