@@ -296,7 +296,7 @@ const tts = async (res, aiText) => {
 }
 
 const predictPCOS = async (data) => {
-  const res = await fetch('http://127.0.0.1:8000/pcos', {
+  const res = await fetch(`${process.env.APP_URL}/pcos`, {
       method: 'POST',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -306,7 +306,7 @@ const predictPCOS = async (data) => {
 }
 
 const predictDiabetes = async (data) => {
-  const res = await fetch('http://127.0.0.1:8000/diabetes', {
+  const res = await fetch(`${process.env.APP_URL}/diabetes`, {
       method: 'POST',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -316,7 +316,7 @@ const predictDiabetes = async (data) => {
 }
 
 const predictChronicKidney = async (data) => {
-  const res = await fetch('http://127.0.0.1:8000/kidney', {
+  const res = await fetch(`${process.env.APP_URL}/kidney`, {
       method: 'POST',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -326,7 +326,7 @@ const predictChronicKidney = async (data) => {
 }
 
 const predictBrainTumor = async (image) => {
-  const res = await fetch('http://127.0.0.1:8000/brainTumor', {
+  const res = await fetch(`${process.env.APP_URL}/brainTumor`, {
       method: 'POST',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({image})
@@ -336,7 +336,7 @@ const predictBrainTumor = async (image) => {
 }
 
 const predictHeartFailure = async (data) => {
-  const res = await fetch('http://127.0.0.1:8000/heartFailure', {
+  const res = await fetch(`${process.env.APP_URL}/heartFailure`, {
       method: 'POST',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
