@@ -102,6 +102,26 @@
             color: white;
         }
 
+        .btn-pcos {
+            background: linear-gradient(to right, #ff416c, #ff4b2b);
+            color: white;
+        }
+
+        .btn-diabetes {
+            background: linear-gradient(to right, #2193b0, #6dd5ed);
+            color: white;
+        }
+
+        .btn-heart {
+            background: linear-gradient(to right, #11998e, #38ef7d);
+            color: white;
+        }
+
+        .btn-kidney {
+            background: linear-gradient(to right, rgb(184, 167, 76), #e9f810);
+            color: white;
+        }
+
         #dashButtons {
             display: none;
         }
@@ -364,14 +384,17 @@
         </div>
 
         <div class="main-buttons" id="dashButtons">
-            <button class="btn btn-arabic" onclick="window.location.href = 'http:\/\/127.0.0.1:5000/dashboards/pcos'">
+            <button class="btn btn-pcos" onclick="window.location.href = 'http:\/\/127.0.0.1:5000/dashboards/pcos'">
                 <span>PCOS</span>
             </button>
-            <button class="btn btn-english" onclick="window.location.href = 'http:\/\/127.0.0.1:5000/dashboards/diabetes'">
+            <button class="btn btn-diabetes" onclick="window.location.href = 'http:\/\/127.0.0.1:5000/dashboards/diabetes'">
                 <span>Diabetes</span>
             </button>
-            <button class="btn btn-text" onclick="window.location.href = 'http:\/\/127.0.0.1:5000/dashboards/heartFailure'">
+            <button class="btn btn-heart" onclick="window.location.href = 'http:\/\/127.0.0.1:5000/dashboards/heart'">
                 <span>Heart Failure</span>
+            </button>
+            <button class="btn btn-kidney" onclick="window.location.href = 'http:\/\/127.0.0.1:5000/dashboards/kidney'">
+                <span>Chronic Kidney</span>
             </button>
         </div>
 
@@ -579,6 +602,7 @@
                 console.error('Error processing recording:', e);
                 output.innerHTML = '<span style="color:red;font-weight:bold;">Error: Could not process recording. Please try again.</span>';
                 startBtn.classList.add('pulse');
+                startBtn.disabled = false
             }
         }
 
@@ -685,9 +709,9 @@
 
         async function sendToTextAPI(userMessage, imageBase64) {
             try {
-                const userContent = {};
-                if (userMessage) userContent.text = userMessage;
-                
+                let userContent = {};
+                if (userMessage) userContent = userMessage;
+
                 textContext.push({ user: (imageBase64?'<<THERE IS AN ATTACHED IMAGE>>':'') + userContent });
                 
                 const requestBody = {
@@ -728,6 +752,7 @@
             } catch (error) {
                 console.error('Error sending message:', error);
                 addMessageToChat("Sorry, I'm having trouble connecting right now. Please try again.", null, 'agent');
+                startBtn.disabled = false
             } finally {
                 setInputState(true);
             }
