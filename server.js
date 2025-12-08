@@ -133,6 +133,8 @@ const stt = async (req) => {
   }
 
  const llm = async (req) => {
+  const fileAttachment = (req.body.image != undefined && req.body.image != null && req.body.image != '') ? "<<THERE IS AN ATTACHED IMAGE>>" : ''
+  req.body.context[-1].user.text = fileAttachment + req.body.context[-1].user.text
   const langInstruction = (req.body.lang === 'arabic')
     ? "OUTPUT RULE: The 'message' field MUST be in Egyptian Arabic (لهجة مصرية). The 'reasoning' and technical keys MUST remain in English."
     : "OUTPUT RULE: The 'message' field MUST be in English.";
@@ -168,7 +170,7 @@ const stt = async (req) => {
 
     Example 4 (Triggering Image-Only-based Tool):
     User: "I want you to check my MRI image of my brain."
-    Context: []
+    Context: [...tells that image is attached...]
     Response: {
       "reasoning": "MRI image of brain is gained. I can now trigger the prediction.",
       "tool": {
