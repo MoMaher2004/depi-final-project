@@ -34,6 +34,7 @@ heartFailureScalerModel = joblib.load(os.path.join(os.path.dirname(os.path.abspa
 heartFailureModel = joblib.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "heart_clinic_model_optimized.pkl"))
 kidneyModel = joblib.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", 'kidney_model.pkl'))
 kidneyScaler = joblib.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", 'kidney_scaler.pkl'))
+skinCancerModel = load_model(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", 'skinCancer.h5'))
 
 import dash
 from dash import Dash, html, dcc
@@ -291,6 +292,82 @@ def brainTumor():
 
     Predicted Class: {predicted_class}
     Confidence: {confidence:.2f}%"""
+
+@app.route("/skinCancer", methods=["POST"])
+def skinCancer():
+    data = request.json
+    
+    target_size = (150, 150)
+    base64_image_string = data.get('image')
+
+    if not base64_image_string:
+        return jsonify({"error": "'image' not found in input data."}), 400
+
+    try:
+        if ';base64,' in base64_image_string:
+            _, base64_image_string = base64_image_string.split(';base64,')
+            
+        image_data = base64.b64decode(base64_image_string)
+    except Exception as e:
+        print(f"Error decoding Base64: {e}")
+        return jsonify({"error": "Base64 decoding failed."}), 400
+
+    try:
+        image_stream = io.BytesIO(image_data)
+        img = Image.open(image_stream).convert('RGB')
+        
+        img = image.resize(target_size)
+        img_array = np.array(img)
+        img_array = np.expand_dims(img_array, axis=0)
+        processed_img = img_array / 255.0
+    except Exception as e:
+        print(f"Error processing image data: {e}")
+        return jsonify({"error": "Image processing failed."}), 400
+
+    try:
+        prediction = skin_cancer_model.predict(processed_img, verbose=0)
+        
+        malignant_probability = float(prediction[0][0])
+        benign_probability = 1.0 - malignant_probability
+        
+        threshold = 0.42
+        is_malignant = malignant_probability > threshold
+        
+        if is_malignant:
+            confidence = malignant_probability * 100
+            predicted_class = "Malignant"
+        else:
+            confidence = benign_probability * 100
+            predicted_class = "Benign"
+            
+    except Exception as e:
+        print(f"Error during prediction: {e}")
+        return jsonify({"error": "Prediction failed."}), 500
+
+    response = {
+        "predicted_class": predicted_class,
+        "confidence": f"{confidence:.2f}%",
+        "probabilities": {
+            "benign": f"{benign_probability * 100:.2f}%",
+            "malignant": f"{malignant_probability * 100:.2f}%"
+        },
+        "threshold_used": threshold,
+        "is_malignant": bool(is_malignant)
+    }
+    
+    report = f"""Skin Cancer Prediction Report
+    
+    Prediction probabilities:
+    Benign: {benign_probability * 100:.2f}%
+    Malignant: {malignant_probability * 100:.2f}%
+    
+    Predicted Class: {predicted_class}
+    Confidence: {confidence:.2f}%
+    Threshold: {threshold}
+    
+    {'⚠️ WARNING: Potential malignant lesion detected. Please consult a dermatologist.' if is_malignant else '✅ Likely benign. Still, regular skin checks are recommended.'}"""
+    
+    return report
 
 @app.route('/dashboards/pcos/<path:path>')
 def pcos_dash_route(path):

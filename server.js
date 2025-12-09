@@ -59,7 +59,15 @@ const CLINIC_CONFIG = {
     tool_name: "predictBrainTumor",
     description: "User suspects a brain tumor.",
     fields: [
-      { name: "image", question: "Please provide the MRI image path.", type: "string", mandatory: true }
+      { name: "image", question: "Please provide the MRI image.", type: "string", mandatory: true }
+    ],
+    params_to_pass: []
+  },
+  skin_cancer: {
+    tool_name: "predictSkinCancer",
+    description: "User suspects a skin cancer.",
+    fields: [
+      { name: "image", question: "Please provide the skin image.", type: "string", mandatory: true }
     ],
     params_to_pass: []
   },
@@ -335,6 +343,16 @@ const predictBrainTumor = async (image) => {
     return res.text()
 }
 
+const predictSkinCancer = async (image) => {
+  const res = await fetch(`${process.env.APP_URL}/skinCancer`, {
+      method: 'POST',
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({image})
+    });
+
+    return res.text()
+}
+
 const predictHeartFailure = async (data) => {
   const res = await fetch(`${process.env.APP_URL}/heartFailure`, {
       method: 'POST',
@@ -384,6 +402,11 @@ app.post('/voice', upload.single('audio'), async (req, res) => {
         aiText = await llm(req)
       } else if (aiText.tool.name == 'predictChronicKidney'){
         const toolRes = await predictChronicKidney(aiText.tool.params)
+        console.log(toolRes)
+        req.body.context.push({tool: toolRes})
+        aiText = await llm(req)
+      } else if (aiText.tool.name == 'predictSkinCancer'){
+        const toolRes = await predictSkinCancer(aiText.tool.params)
         console.log(toolRes)
         req.body.context.push({tool: toolRes})
         aiText = await llm(req)
