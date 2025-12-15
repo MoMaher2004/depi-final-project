@@ -316,7 +316,7 @@ def skinCancer():
         image_stream = io.BytesIO(image_data)
         img = Image.open(image_stream).convert('RGB')
         
-        img = image.resize(target_size)
+        img = img.resize(target_size)
         img_array = np.array(img)
         img_array = np.expand_dims(img_array, axis=0)
         processed_img = img_array / 255.0
@@ -325,7 +325,7 @@ def skinCancer():
         return jsonify({"error": "Image processing failed."}), 400
 
     try:
-        prediction = skin_cancer_model.predict(processed_img, verbose=0)
+        prediction = skinCancerModel.predict(processed_img, verbose=0)
         
         malignant_probability = float(prediction[0][0])
         benign_probability = 1.0 - malignant_probability

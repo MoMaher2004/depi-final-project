@@ -405,11 +405,6 @@ app.post('/voice', upload.single('audio'), async (req, res) => {
         console.log(toolRes)
         req.body.context.push({tool: toolRes})
         aiText = await llm(req)
-      } else if (aiText.tool.name == 'predictSkinCancer'){
-        const toolRes = await predictSkinCancer(aiText.tool.params)
-        console.log(toolRes)
-        req.body.context.push({tool: toolRes})
-        aiText = await llm(req)
       }
     }
     const ttsResponse = await tts(res, aiText)
@@ -461,6 +456,11 @@ app.post('/text', async (req, res) => {
         aiText = await llm(req)
       } else if (aiText.tool.name == 'predictChronicKidney'){
         const toolRes = await predictChronicKidney(aiText.tool.params)
+        console.log(toolRes)
+        req.body.context.push({tool: toolRes})
+        aiText = await llm(req)
+      } else if (aiText.tool.name == 'predictSkinCancer'){
+        const toolRes = await predictSkinCancer(req.body.image)
         console.log(toolRes)
         req.body.context.push({tool: toolRes})
         aiText = await llm(req)
