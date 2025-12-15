@@ -1,1 +1,1 @@
-models/skinCancer9.h5 filter=lfs diff=lfs merge=lfs -text
+models/skinCancer.h5 filter=lfs diff=lfs merge=lfs -text
