@@ -1,10 +1,30 @@
-# Smart Hospital System
-## To run the project
+# 🏥 Smart Hospital System
 
-1- open the root directory in terminal
+## 🚀 How to Run the Project
 
-2- run "python app.py"
+1. **Configure environment variables**
 
-3- run "node server.js"
+   * Replace the API keys in the `.env` file with valid keys from:
 
-4- open "http://127.0.0.1:3000"
+     * DeepSeek
+     * ElevenLabs
+
+2. **Open the project directory**
+
+   * Open a terminal in the project root directory.
+
+3. **Start the Python backend**
+
+   ```bash
+   python app.py
+   ```
+
+4. **Start the Node.js server**
+
+   ```bash
+   node server.js
+   ```
+
+5. **Open the application**
+
+   * Visit: [http://127.0.0.1:3000](http://127.0.0.1:3000)
